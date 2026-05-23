@@ -89,7 +89,8 @@ async function handleLogin() {
   try {
     const isPhone = /^1\d{10}$/.test(form.phoneOrEmail)
     const params = {
-      [isPhone ? 'phone' : 'email']: form.phoneOrEmail,
+      phone: isPhone ? form.phoneOrEmail : '',
+      email: isPhone ? '' : form.phoneOrEmail,
       password: form.password,
       domainName: form.domainName
     }
