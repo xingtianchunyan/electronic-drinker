@@ -44,15 +44,6 @@
         <span v-if="loading" class="spinner"></span>
         <span v-else>登录</span>
       </button>
-
-      <!-- Demo 账户快捷登录 -->
-      <div class="demo-section">
-        <p class="demo-hint">或试用 Demo 账户</p>
-        <div class="demo-buttons">
-          <button class="demo-btn" @click="demoLogin('demo')">Demo 账户</button>
-          <button class="demo-btn" @click="demoLogin('test')">Test 账户</button>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -116,23 +107,6 @@ async function handleLogin() {
   } finally {
     loading.value = false
   }
-}
-
-async function demoLogin(type: 'demo' | 'test') {
-  loading.value = true
-  error.value = ''
-
-  const demoAccounts = {
-    demo: { phone: '13800138000', password: 'demo1234', domainName: 'demo.web5.xjdao.net' },
-    test: { phone: '13900139000', password: 'test5678', domainName: 'test.web5.xjdao.net' }
-  }
-
-  const account = demoAccounts[type]
-  form.phoneOrEmail = account.phone
-  form.password = account.password
-  form.domainName = account.domainName
-
-  await handleLogin()
 }
 </script>
 
@@ -251,37 +225,5 @@ async function demoLogin(type: 'demo' | 'test') {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-.demo-section {
-  margin-top: 16px;
-  text-align: center;
-}
-
-.demo-hint {
-  margin: 0 0 10px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.demo-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.demo-btn {
-  flex: 1;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.demo-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
 }
 </style>
