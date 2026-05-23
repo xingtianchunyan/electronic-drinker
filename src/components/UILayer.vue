@@ -1,7 +1,17 @@
 <template>
   <div class="ui-layer">
-    <!-- 左上角登录/用户信息 -->
+    <!-- 左上角登录/用户信息 + 声音切换 -->
     <div class="ui-top-left">
+      <!-- 声音切换按钮 -->
+      <button
+        class="voice-toggle"
+        :class="store.voiceGender"
+        @click="store.toggleVoiceGender"
+        :title="store.voiceGender === 'female' ? '当前：女声，点击切换' : '当前：男声，点击切换'"
+      >
+        {{ store.voiceGender === 'female' ? '女' : '男' }}
+      </button>
+
       <div v-if="store.isLoggedIn" class="user-info" @click="toggleMenu">
         <span class="domain">{{ store.userInfo?.domainName }}</span>
         <span class="score">🌾 {{ store.riceScore }}</span>
@@ -127,6 +137,40 @@ function denyAge() {
   cursor: pointer;
   backdrop-filter: blur(4px);
   font-size: 12px;
+}
+
+/* 声音切换按钮 */
+.voice-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+
+.voice-toggle:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.voice-toggle.female {
+  background: rgba(255, 107, 107, 0.3);
+  border-color: rgba(255, 107, 107, 0.5);
+}
+
+.voice-toggle.male {
+  background: rgba(74, 144, 217, 0.3);
+  border-color: rgba(74, 144, 217, 0.5);
 }
 
 .domain {

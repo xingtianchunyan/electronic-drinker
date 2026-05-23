@@ -17,7 +17,9 @@ export const useAppStore = defineStore('app', () => {
   const bubbles = ref<BubbleMessage[]>([])
   const background = ref<'0' | '1'>('0') // 0=开屏背景, 1=酒馆背景
 
-  // 饮酒记录
+  // 语音设置
+  const savedGender = localStorage.getItem('voice_gender')
+  const voiceGender = ref<'female' | 'male'>(savedGender === 'male' ? 'male' : 'female')
   const drinkTimestamps = ref<number[]>([])
 
   // 方法
@@ -97,6 +99,11 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  function toggleVoiceGender() {
+    voiceGender.value = voiceGender.value === 'female' ? 'male' : 'female'
+    localStorage.setItem('voice_gender', voiceGender.value)
+  }
+
   return {
     token,
     userInfo,
@@ -108,6 +115,7 @@ export const useAppStore = defineStore('app', () => {
     agentState,
     bubbles,
     background,
+    voiceGender,
     drinkTimestamps,
     setToken,
     setUserInfo,
@@ -118,6 +126,7 @@ export const useAppStore = defineStore('app', () => {
     getRecentDrinkCount,
     deductRice,
     initFromStorage,
-    restoreLoginState
+    restoreLoginState,
+    toggleVoiceGender
   }
 })

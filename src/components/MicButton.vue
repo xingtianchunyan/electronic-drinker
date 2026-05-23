@@ -105,7 +105,7 @@ async function handleUserInput(text: string) {
       const msg = '哎呀，这个酒我暂时还不了解呢，酒窖里没这款。换个我知道的？'
       store.addBubble(msg, 'agent')
       addMessage('assistant', msg)
-      await speak(msg)
+      await speak(msg, store.voiceGender)
       processing.value = false
       store.agentState = 'idle'
       return
@@ -115,7 +115,7 @@ async function handleUserInput(text: string) {
     const recentDrinkCount = store.getRecentDrinkCount()
     if (isDrinkRequest && recentDrinkCount >= 3) {
       store.addBubble('喝慢点，身体要紧。咱们先聊聊天，缓缓再喝。', 'agent')
-      await speak('喝慢点，身体要紧。咱们先聊聊天，缓缓再喝。')
+      await speak('喝慢点，身体要紧。咱们先聊聊天，缓缓再喝。', store.voiceGender)
       processing.value = false
       store.agentState = 'idle'
       return
@@ -147,13 +147,13 @@ async function handleUserInput(text: string) {
     addMessage('assistant', finalResponse)
 
     // 语音播报
-    await speak(finalResponse)
+    await speak(finalResponse, store.voiceGender)
 
   } catch (e: any) {
     console.error('对话处理失败:', e)
     const errorMsg = '哎呀，小酒脑袋有点晕，你再说一遍？'
     store.addBubble(errorMsg, 'agent')
-    await speak(errorMsg)
+    await speak(errorMsg, store.voiceGender)
   } finally {
     processing.value = false
     store.agentState = 'idle'
@@ -165,7 +165,7 @@ async function handleDrinkRequest(userText?: string, wineId?: string, wineContex
   if (!store.isLoggedIn) {
     const msg = '先登录乡建DAO才能一起喝酒哦，点击左上角登录吧～'
     store.addBubble(msg, 'agent')
-    await speak(msg)
+    await speak(msg, store.voiceGender)
     processing.value = false
     store.agentState = 'idle'
     return
@@ -175,7 +175,7 @@ async function handleDrinkRequest(userText?: string, wineId?: string, wineContex
   if (store.riceScore < 2) {
     const msg = `稻米不足啦！当前余额：${store.riceScore} 🌾，至少需要2🌾才能喝一杯。快去赚点稻米吧！`
     store.addBubble(msg, 'agent')
-    await speak(msg)
+    await speak(msg, store.voiceGender)
     processing.value = false
     store.agentState = 'idle'
     return
@@ -204,7 +204,7 @@ async function handleDrinkRequest(userText?: string, wineId?: string, wineContex
         const msg = '哎呀，这个酒我暂时还不了解呢，酒窖里没这款。换个我知道的？'
         store.addBubble(msg, 'agent')
         addMessage('assistant', msg)
-        await speak(msg)
+        await speak(msg, store.voiceGender)
         processing.value = false
         store.agentState = 'idle'
         return
@@ -221,17 +221,17 @@ async function handleDrinkRequest(userText?: string, wineId?: string, wineContex
       store.agentState = 'speaking'
       store.addBubble(intro, 'agent')
       addMessage('assistant', intro)
-      await speak(intro)
+      await speak(intro, store.voiceGender)
     } else {
       const msg = '扣费失败了，可能是网络问题，稍后再试吧。'
       store.addBubble(msg, 'agent')
-      await speak(msg)
+      await speak(msg, store.voiceGender)
     }
   } catch (e) {
     console.error('扣费失败:', e)
     const msg = '扣费出错了，再试一次？'
     store.addBubble(msg, 'agent')
-    await speak(msg)
+    await speak(msg, store.voiceGender)
   } finally {
     processing.value = false
     store.agentState = 'idle'
