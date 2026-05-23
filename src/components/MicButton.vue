@@ -100,6 +100,7 @@ async function handleUserInput(text: string) {
 
     // 调用 Kimi
     const response = await chatWithKimi(text, recentDrinkCount)
+    let finalResponse = response
 
     // 处理 function call
     if (response.startsWith('[FUNC:drink_wine]')) {
@@ -109,11 +110,12 @@ async function handleUserInput(text: string) {
       return
     }
 
-    // 处理 [DRINK] 标记
-    let finalResponse = response
-    if (finalResponse.includes('[DRINK]')) {
-      finalResponse = finalResponse.replace('[DRINK]', '').trim()
-      await handleDrinkRequest(text)
+    // 处理 [DRINK:酒款ID] 标记（SiliconFlow 模式 fallback）
+    const drinkMatch = finalResponse.match(/\[DRINK(?::([^\]]+))?\]/)
+    if (drinkMatch) {
+      const matchedWineId = drinkMatch[1]?.trim()
+      finalResponse = finalResponse.replace(/\[DRINK(?::[^\]]+)?\]/g, '').trim()
+      await handleDrinkRequest(text, matchedWineId)
       return
     }
 

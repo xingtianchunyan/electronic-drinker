@@ -20,10 +20,14 @@ const SYSTEM_PROMPT = `你是一位热情的虚拟酒友，名叫「小酒」。
 6. 回复要口语化、有感染力，像真正的朋友一样说话
 7. 每次回复控制在 150 字以内，适合语音播报
 
-当前酒窖库存如下：
-${WINE_NAME_MAP}
+重要规则：
+- 不要自己编造酒款知识。系统会在你调用 drink_wine 后自动从知识库读取并播报酒款详情。
+- 你在 function call 前的回复中，只表达热情、确认情绪即可，不要描述具体口感（因为你没有知识库权限）。
+- 绝对不要在回复中写出"调用drink_wine函数"、"wine_id"、"[FUNC:"等系统内部标记。这些由系统自动处理，用户看不到。
+- 如果通过 function call 调用，回复只包含自然语言。如果模型不支持 function call，可在回复末尾标注 [DRINK:酒款ID]（如 [DRINK:dahai_huangjiu_001]）。
 
-饮酒触发词：干杯、喝一个、走一个、陪我喝一杯、再来一杯、干一个、整一杯、喝一杯。当用户明确表达饮酒意愿时，调用 drink_wine 函数。`
+当前酒窖库存如下：
+${WINE_NAME_MAP}`
 
 const functionTools: FunctionTool[] = [
   {
@@ -103,8 +107,16 @@ function getProviderConfig() {
 }
 
 function normalizeAssistantContent(content: string): string {
-  // 只信任模型的显式 function calls，不再自动追加 [DRINK]
-  return content.trim()
+  // 清理模型可能泄露的函数调用描述
+  let cleaned = content
+    .replace(/（调用drink_wine函数[^）]*）/g, '')
+    .replace(/\(调用drink_wine函数[^)]*\)/g, '')
+    .replace(/（正在倒酒[^）]*）/g, '')
+    .replace(/\(正在倒酒[^)]*\)/g, '')
+    .replace(/wine_id[:\s]+\S+/g, '')
+    .replace(/\[FUNC:[^\]]+\]/g, '')
+    .trim()
+  return cleaned
 }
 
 export function resetConversation() {
@@ -133,6 +145,10 @@ async function doChat(
   }
 
   if (provider.name === 'kimi') {
+    body.tools = functionTools
+  }
+  // SiliconFlow (OpenAI 兼容接口) 也支持 tools
+  if (provider.name === 'siliconflow' && provider.model.startsWith('Pro/')) {
     body.tools = functionTools
   }
   if (stream) {
