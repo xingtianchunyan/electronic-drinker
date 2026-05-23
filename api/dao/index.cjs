@@ -1,7 +1,3 @@
-const FIXED_COOKIE = '7b8M711h0qh4W7gFkWgTuQX0EwJsDJl1EOjUVRCd';
-const FIXED_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0';
-const FIXED_CAPTCHA = 'eyJjZXJ0aWZ5SWQiOiJGUkd3M1RGZjJoIiwic2NlbmVJZCI6IjE0bnpjaDdiIiwiaXNTaWduIjp0cnVlLCJzZWN1cml0eVRva2VuIjoiNm9PbzdlNzJuQTYxdVZMaVpWS2lMWUxyQTU0WEwrcXdVV2hlZ0p1ejdNNGUza3BmQnR5QjlZZkpvS3gyM1crQWhuM3pwYzNRZEViWTlMNjFsc3o4dWFCUFVvWkl3bGh3elRERG0xenNRMTM1Nk5HWnh0WVZucEdQUVUrT1RtSXYifQ==';
-
 async function readBody(req) {
   if (req.method === 'GET' || req.method === 'HEAD') return null;
   const chunks = [];
@@ -13,16 +9,22 @@ async function readBody(req) {
   try { return JSON.parse(raw); } catch { return raw; }
 }
 
-async function proxyRequest(req, res, endpoint) {
+const FIXED_COOKIE = '7b8M711h0qh4W7gFkWgTuQX0EwJsDJl1EOjUVRCd';
+const FIXED_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0';
+const FIXED_CAPTCHA = 'eyJjZXJ0aWZ5SWQiOiJGUkd3M1RGZjJoIiwic2NlbmVJZCI6IjE0bnpjaDdiIiwiaXNTaWduIjp0cnVlLCJzZWN1cml0eVRva2VuIjoiNm9PbzdlNzJuQTYxdVZMaVpWS2lMWUxyQTU0WEwrcXdVV2hlZ0p1ejdNNGUza3BmQnR5QjlZZkpvS3gyM1crQWhuM3pwYzNRZEViWTlMNjFsc3o4dWFCUFVvWkl3bGh3elRERG0xenNRMTM1Nk5HWnh0WVZucEdQUVUrT1RtSXYifQ==';
+
+module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const body = await readBody(req);
-  const targetUrl = `https://xjdao.net/api/v1/${endpoint}`;
 
-  console.log('[DAO PROXY]', { method: req.method, url: req.url, endpoint, targetUrl });
+  // 从 req.url 提取路径，例如 /api/dao/user/login -> user/login
+  const m = req.url.match(/^\/api\/dao\/(.+)/);
+  const path = m ? m[1].split('?')[0] : '';
+  const targetUrl = 'https://xjdao.net/api/v1/' + path;
 
   const forwardHeaders = {
     'Accept': 'application/json, text/plain, */*',
@@ -50,7 +52,7 @@ async function proxyRequest(req, res, endpoint) {
   let finalBody = body;
   let finalReferer = 'https://xjdao.net/';
 
-  if (endpoint === 'user/login') {
+  if (path === 'user/login') {
     finalBody = {
       phone: body?.phone || '',
       email: body?.email || '',
@@ -61,11 +63,11 @@ async function proxyRequest(req, res, endpoint) {
       sceneId: '14nzch7b',
       captchaVerifyParam: FIXED_CAPTCHA
     };
-  } else if (endpoint === 'user/login-user-detail') {
+  } else if (path === 'user/login-user-detail') {
     finalBody = null;
     const domainName = body?.domainName || '';
     if (domainName) finalReferer = `https://xjdao.net/profile/${domainName}`;
-  } else if (endpoint === 'score/reward') {
+  } else if (path === 'score/reward') {
     finalBody = body;
     const domainName = body?.fromDomainName || '';
     if (domainName) finalReferer = `https://xjdao.net/profile/${domainName}/post/3mjhgg4ht7c27`;
@@ -88,12 +90,9 @@ async function proxyRequest(req, res, endpoint) {
     if (contentType) res.setHeader('Content-Type', contentType);
 
     const data = await response.text();
-    console.log('[DAO PROXY] response', { status: response.status, endpoint });
     res.status(response.status).send(data);
   } catch (err) {
-    console.error('[DAO PROXY] error:', err.message || err, { endpoint, targetUrl });
-    res.status(500).json({ error: err.message || 'Proxy request failed', endpoint, targetUrl });
+    console.error('DAO proxy error:', err.message || err);
+    res.status(500).json({ error: err.message || 'Proxy request failed' });
   }
-}
-
-module.exports = { proxyRequest };
+};
