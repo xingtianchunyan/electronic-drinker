@@ -2,21 +2,10 @@ import axios from 'axios'
 import type { LoginParams, LoginResponse, UserDetailResponse, ScoreRewardResponse } from '@/types'
 
 const daoClient = axios.create({
-  baseURL: 'https://xjdao.net/api/v1',
+  baseURL: '/api/dao',
   timeout: 15000,
   headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'en',
-    'Cache-Control': 'no-cache',
-    'Pragma': 'no-cache',
-    'Priority': 'u=1, i',
-    'Sec-Ch-Ua': '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"',
-    'Sec-Ch-Ua-Mobile': '?0',
-    'Sec-Ch-Ua-Platform': '"Windows"',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-origin'
+    'Content-Type': 'application/json'
   }
 })
 
