@@ -4,13 +4,17 @@
   "outputDirectory": "dist",
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/api/dao/[...path].js"
+    },
+    {
       "src": "/assets/(.*)",
       "headers": {
         "Cache-Control": "public, max-age=31536000, immutable"
       }
     },
     {
-      "src": "/((?!api/).*)",
+      "src": "/(.*)",
       "dest": "/index.html"
     }
   ]
