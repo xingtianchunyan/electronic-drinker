@@ -94,6 +94,12 @@ async function handleUserInput(text: string) {
       wineContext = findWineByName(text)
     }
 
+    // 如果是明确的饮酒请求且匹配到酒款，直接走饮酒流程（无需模型闲聊）
+    if (isDrinkRequest && wineContext) {
+      await handleDrinkRequest(text, wineContext.id, wineContext)
+      return
+    }
+
     // 检查高频饮酒
     const recentDrinkCount = store.getRecentDrinkCount()
     if (isDrinkRequest && recentDrinkCount >= 3) {
@@ -104,7 +110,7 @@ async function handleUserInput(text: string) {
       return
     }
 
-    // 调用 Kimi，传入酒款上下文
+    // 调用 Kimi（未匹配到酒款或普通聊天）
     const response = await chatWithKimi(text, recentDrinkCount, wineContext)
     let finalResponse = response
 
@@ -143,7 +149,7 @@ async function handleUserInput(text: string) {
   }
 }
 
-async function handleDrinkRequest(userText?: string, wineId?: string) {
+async function handleDrinkRequest(userText?: string, wineId?: string, wineContext?: Wine) {
   // 检查登录状态
   if (!store.isLoggedIn) {
     const msg = '先登录乡建DAO才能一起喝酒哦，点击左上角登录吧～'
@@ -178,12 +184,11 @@ async function handleDrinkRequest(userText?: string, wineId?: string) {
       await delay(2000)
 
       // 确定酒款
-      let wine: Wine | undefined
-      if (wineId) {
+      let wine: Wine | undefined = wineContext
+      if (!wine && wineId) {
         wine = getWineById(wineId)
       }
       if (!wine && userText) {
-        // 前端回退：从用户消息中匹配酒名
         wine = findWineByName(userText)
       }
       if (!wine) {

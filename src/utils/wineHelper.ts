@@ -33,7 +33,8 @@ export function getWineById(id: string): Wine | undefined {
 export function generateWineIntro(wine: Wine): string {
   const facts = wine.fun_facts
   const randomFact = facts[Math.floor(Math.random() * facts.length)]
-  return `这杯是【${wine.name}】，产自${wine.origin}。${wine.history.substring(0, 60)}...它的口感${wine.tasting_notes.substring(0, 50)}...对了，${randomFact}。来，干了这杯，这可是花了2稻米换来的，慢慢品！`
+
+  return `来，这杯${wine.name}，干了！\n\n这款酒产自${wine.origin}，酒精度约${wine.alcohol_content}。\n\n${wine.history}\n\n酿造工艺：${wine.brewing_process}\n\n口感：${wine.tasting_notes}\n\n文化故事：${wine.culture}\n\n对了，${randomFact}\n\n慢慢品，这2稻米花得值！`
 }
 
 export function getDrinkingTip(): string {
