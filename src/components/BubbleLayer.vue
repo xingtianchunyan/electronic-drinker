@@ -1,5 +1,5 @@
 <template>
-  <div class="bubble-layer">
+  <div ref="bubbleContainer" class="bubble-layer">
     <transition-group name="bubble">
       <div
         v-for="bubble in bubbles"
@@ -15,10 +15,20 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watch, nextTick } from 'vue'
 import { useAppStore } from '@/stores'
 
 const store = useAppStore()
 const bubbles = store.bubbles
+const bubbleContainer = ref<HTMLDivElement | null>(null)
+
+// 自动滚动到底部
+watch(() => bubbles.length, async () => {
+  await nextTick()
+  if (bubbleContainer.value) {
+    bubbleContainer.value.scrollTop = bubbleContainer.value.scrollHeight
+  }
+})
 
 function removeBubble(id: string) {
   const idx = bubbles.findIndex(b => b.id === id)
@@ -32,6 +42,7 @@ function removeBubble(id: string) {
   top: 12%;
   left: 0;
   right: 0;
+  bottom: 180px; /* 留出底部输入区域 */
   z-index: 30;
   pointer-events: none;
   display: flex;
@@ -39,6 +50,28 @@ function removeBubble(id: string) {
   align-items: center;
   gap: 10px;
   padding: 0 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 5%,
+    black 90%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 5%,
+    black 90%,
+    transparent 100%
+  );
+}
+
+.bubble-layer::-webkit-scrollbar {
+  display: none;
 }
 
 .bubble {
@@ -51,6 +84,7 @@ function removeBubble(id: string) {
   word-break: break-word;
   line-height: 1.5;
   font-size: 14px;
+  flex-shrink: 0;
 }
 
 .bubble-text {
