@@ -13,26 +13,16 @@ async function readBody(req) {
   try { return JSON.parse(raw); } catch { return raw; }
 }
 
-module.exports = async (req, res) => {
+async function proxyRequest(req, res, endpoint) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const body = await readBody(req);
+  const targetUrl = `https://xjdao.net/api/v1/${endpoint}`;
 
-  // 直接从 req.url 提取路径（不依赖 req.query.path）
-  const urlMatch = req.url.match(/^\/api\/dao\/([^?]+)/);
-  const path = urlMatch ? urlMatch[1] : '';
-  const targetUrl = `https://xjdao.net/api/v1/${path}`;
-
-  console.log('[DAO PROXY]', {
-    method: req.method,
-    url: req.url,
-    path,
-    targetUrl,
-    bodyKeys: body ? Object.keys(body) : null
-  });
+  console.log('[DAO PROXY]', { method: req.method, url: req.url, endpoint, targetUrl });
 
   const forwardHeaders = {
     'Accept': 'application/json, text/plain, */*',
@@ -60,7 +50,7 @@ module.exports = async (req, res) => {
   let finalBody = body;
   let finalReferer = 'https://xjdao.net/';
 
-  if (path === 'user/login') {
+  if (endpoint === 'user/login') {
     finalBody = {
       phone: body?.phone || '',
       email: body?.email || '',
@@ -71,11 +61,11 @@ module.exports = async (req, res) => {
       sceneId: '14nzch7b',
       captchaVerifyParam: FIXED_CAPTCHA
     };
-  } else if (path === 'user/login-user-detail') {
+  } else if (endpoint === 'user/login-user-detail') {
     finalBody = null;
     const domainName = body?.domainName || '';
     if (domainName) finalReferer = `https://xjdao.net/profile/${domainName}`;
-  } else if (path === 'score/reward') {
+  } else if (endpoint === 'score/reward') {
     finalBody = body;
     const domainName = body?.fromDomainName || '';
     if (domainName) finalReferer = `https://xjdao.net/profile/${domainName}/post/3mjhgg4ht7c27`;
@@ -98,10 +88,12 @@ module.exports = async (req, res) => {
     if (contentType) res.setHeader('Content-Type', contentType);
 
     const data = await response.text();
-    console.log('[DAO PROXY] response', { status: response.status, targetUrl });
+    console.log('[DAO PROXY] response', { status: response.status, endpoint });
     res.status(response.status).send(data);
   } catch (err) {
-    console.error('[DAO PROXY] error:', err.message || err, { path, targetUrl });
-    res.status(500).json({ error: err.message || 'Proxy request failed', path, targetUrl });
+    console.error('[DAO PROXY] error:', err.message || err, { endpoint, targetUrl });
+    res.status(500).json({ error: err.message || 'Proxy request failed', endpoint, targetUrl });
   }
-};
+}
+
+module.exports = { proxyRequest };
