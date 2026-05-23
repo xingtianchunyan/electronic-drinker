@@ -100,6 +100,17 @@ async function handleUserInput(text: string) {
       return
     }
 
+    // 饮酒请求但未匹配到知识库中的酒款
+    if (isDrinkRequest && !wineContext) {
+      const msg = '哎呀，这个酒我暂时还不了解呢，酒窖里没这款。换个我知道的？'
+      store.addBubble(msg, 'agent')
+      addMessage('assistant', msg)
+      await speak(msg)
+      processing.value = false
+      store.agentState = 'idle'
+      return
+    }
+
     // 检查高频饮酒
     const recentDrinkCount = store.getRecentDrinkCount()
     if (isDrinkRequest && recentDrinkCount >= 3) {
