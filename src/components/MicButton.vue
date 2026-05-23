@@ -59,16 +59,15 @@ function sendText() {
 async function triggerVoice() {
   if (processing.value) return
 
-  // 聚焦文本输入框
-  showTextInput.value = true
-  await new Promise(resolve => setTimeout(resolve, 100))
-  textInputRef.value?.focus()
-
   // 调用语音桥接
   try {
     await triggerVoiceBridge()
-  } catch (e) {
-    alert('请先运行 python voice-bridge.py')
+    // 桥接成功后才切换到文字输入模式
+    showTextInput.value = true
+    await new Promise(resolve => setTimeout(resolve, 100))
+    textInputRef.value?.focus()
+  } catch (e: any) {
+    alert('语音桥接失败: ' + e.message)
   }
 }
 
