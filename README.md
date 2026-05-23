@@ -90,7 +90,36 @@ src/
 
 ```bash
 npm install
+
+# 启动前端（Vite dev server，端口 3000）
 npm run dev
+
+# 启动后端代理（端口 3001，转发 API 到乡建 DAO）
+npm run start
+
+# 启动语音桥接（Windows 语音输入，需要 Python + Flask + pyautogui）
+npm run dev:voice
+```
+
+### 语音桥接（Windows）
+
+语音桥接用于将 Windows 原生语音输入（Win+H）接入到浏览器中：
+
+```bash
+pip install flask pyautogui
+python voice-bridge.py
+```
+
+确保浏览器可以通过 `http://127.0.0.1:8787/voice` 访问到桥接服务。
+
+### Docker 部署
+
+```bash
+# 构建
+docker build -t electronic-drinker .
+
+# 运行
+docker run -p 3000:3000 electronic-drinker
 ```
 
 ## License

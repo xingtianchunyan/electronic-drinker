@@ -2,10 +2,7 @@
   <div class="ui-layer">
     <!-- 左上角登录/用户信息 -->
     <div class="ui-top-left">
-      <button v-if="!store.isLoggedIn" class="login-btn" @click="store.showLoginModal = true">
-        登录
-      </button>
-      <div v-else class="user-info" @click="toggleMenu">
+      <div v-if="store.isLoggedIn" class="user-info" @click="toggleMenu">
         <span class="domain">{{ store.userInfo?.domainName }}</span>
         <span class="score">🌾 {{ store.riceScore }}</span>
       </div>
@@ -14,6 +11,19 @@
       <div v-if="store.showMenu && store.isLoggedIn" class="user-menu">
         <button class="menu-item" @click="handleLogout">退出登录</button>
       </div>
+    </div>
+
+    <!-- 未登录：居中登录按钮 -->
+    <div v-if="!store.isLoggedIn && !isRestoring" class="center-login">
+      <button class="center-login-btn" @click="store.showLoginModal = true">
+        登录乡建DAO，开始饮酒
+      </button>
+    </div>
+
+    <!-- 恢复中提示 -->
+    <div v-if="isRestoring" class="restore-loading">
+      <span class="restore-spinner"></span>
+      <span>恢复中...</span>
     </div>
 
     <!-- 右上角年龄确认提示 -->
@@ -36,8 +46,14 @@ import { useAppStore } from '@/stores'
 
 const store = useAppStore()
 const showAgeCheck = ref(false)
+const isRestoring = ref(true)
 
 onMounted(() => {
+  // 等待登录恢复完成
+  setTimeout(() => {
+    isRestoring.value = false
+  }, 1500)
+
   // 首次访问检查年龄
   const ageConfirmed = localStorage.getItem('age_confirmed')
   if (!ageConfirmed) {
@@ -150,6 +166,64 @@ function denyAge() {
 
 .menu-item:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* 居中登录按钮 */
+.center-login {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  pointer-events: auto;
+}
+
+.center-login-btn {
+  padding: 16px 40px;
+  background: linear-gradient(135deg, #FF6B6B, #EE5A6F);
+  color: #fff;
+  border: none;
+  border-radius: 32px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 32px rgba(238, 90, 111, 0.4);
+  transition: all 0.2s ease;
+}
+
+.center-login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(238, 90, 111, 0.5);
+}
+
+/* 恢复中加载 */
+.restore-loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 50;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+}
+
+.restore-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #FF6B6B;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 年龄确认弹窗 */

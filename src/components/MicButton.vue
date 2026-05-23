@@ -8,6 +8,7 @@
     <!-- 文字输入 -->
     <div v-if="showTextInput" class="text-input-area">
       <input
+        ref="textInputRef"
         v-model="textInput"
         type="text"
         placeholder="跟小酒说点什么..."
@@ -22,84 +23,53 @@
     <button
       v-else
       class="mic-btn"
-      :class="{ recording: store.isRecording, disabled: processing }"
-      @touchstart.prevent="startRecording"
-      @touchend.prevent="stopRecording"
-      @mousedown.prevent="startRecording"
-      @mouseup.prevent="stopRecording"
-      @mouseleave="stopRecording"
+      :class="{ disabled: processing }"
+      @click="triggerVoice"
     >
       <span class="mic-icon">🎙️</span>
-      <span class="mic-text">{{ store.isRecording ? '松开结束' : '按住说话' }}</span>
+      <span class="mic-text">点击语音输入</span>
       <span v-if="processing" class="processing-indicator">处理中...</span>
     </button>
-
-    <!-- 录音波纹效果 -->
-    <div v-if="store.isRecording" class="ripple-container">
-      <div v-for="i in 3" :key="i" class="ripple" :style="{ animationDelay: `${i * 0.2}s` }" />
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { useAppStore } from '@/stores'
-import { useSpeechRecognition } from '@/composables/useSpeech'
 import { chatWithKimi, addMessage } from '@/services/kimiApi'
-import { speak, stopSpeaking } from '@/services/ttsApi'
+import { speak } from '@/services/ttsApi'
 import { DaoAPI } from '@/services/daoApi'
+import { triggerVoiceBridge } from '@/services/voiceBridge'
+import { isDrinkIntent } from '@/utils/drinkIntent'
 import { getRandomWine, generateWineIntro } from '@/utils/wineHelper'
 
 const store = useAppStore()
 const showTextInput = ref(false)
 const textInput = ref('')
 const processing = ref(false)
-
-const { isListening: _isListening, transcript, start: startSpeech, stop: stopSpeech } = useSpeechRecognition()
-
-let recordingTimer: ReturnType<typeof setTimeout> | null = null
-let maxRecordingTimer: ReturnType<typeof setTimeout> | null = null
-
-function startRecording() {
-  if (processing.value) return
-
-  store.isRecording = true
-  store.agentState = 'listening'
-
-  // 尝试语音转文字
-  startSpeech()
-
-  // 防止按住太久
-  maxRecordingTimer = setTimeout(() => {
-    stopRecording()
-  }, 60000)
-}
-
-function stopRecording() {
-  if (!store.isRecording) return
-
-  store.isRecording = false
-  store.agentState = 'idle'
-  stopSpeech()
-
-  if (maxRecordingTimer) {
-    clearTimeout(maxRecordingTimer)
-    maxRecordingTimer = null
-  }
-
-  // 等待语音识别完成
-  setTimeout(() => {
-    if (transcript.value) {
-      handleUserInput(transcript.value)
-    }
-  }, 500)
-}
+const textInputRef = ref<HTMLInputElement | null>(null)
 
 function sendText() {
   const text = textInput.value.trim()
   if (!text || processing.value) return
   textInput.value = ''
   handleUserInput(text)
+}
+
+async function triggerVoice() {
+  if (processing.value) return
+
+  // 聚焦文本输入框
+  showTextInput.value = true
+  await new Promise(resolve => setTimeout(resolve, 100))
+  textInputRef.value?.focus()
+
+  // 调用语音桥接
+  try {
+    await triggerVoiceBridge()
+  } catch (e) {
+    alert('请先运行 python voice-bridge.py')
+  }
 }
 
 async function handleUserInput(text: string) {
@@ -113,8 +83,7 @@ async function handleUserInput(text: string) {
 
   try {
     // 检查是否是饮酒触发词
-    const drinkTriggers = ['干杯', '喝一个', '走一个', '陪我喝一杯', '再来一杯', '干一个', '整一杯', '喝', '喝一杯']
-    const isDrinkRequest = drinkTriggers.some(t => text.includes(t))
+    const isDrinkRequest = isDrinkIntent(text)
 
     // 检查高频饮酒
     const recentDrinkCount = store.getRecentDrinkCount()
@@ -135,12 +104,12 @@ async function handleUserInput(text: string) {
       return
     }
 
-    // 处理 function call 标记 (Kimi 可能在文本中标注 [DRINK])
+    // 处理 [DRINK] 标记
     let finalResponse = response
     if (finalResponse.includes('[DRINK]')) {
       finalResponse = finalResponse.replace('[DRINK]', '').trim()
-      // 同时触发饮酒流程
-      handleDrinkRequest()
+      await handleDrinkRequest()
+      return
     }
 
     // 显示回复
@@ -222,12 +191,6 @@ async function handleDrinkRequest() {
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
-
-onUnmounted(() => {
-  stopSpeaking()
-  if (recordingTimer) clearTimeout(recordingTimer)
-  if (maxRecordingTimer) clearTimeout(maxRecordingTimer)
-})
 </script>
 
 <style scoped lang="scss">
@@ -325,8 +288,7 @@ onUnmounted(() => {
   touch-action: manipulation;
 }
 
-.mic-btn:active,
-.mic-btn.recording {
+.mic-btn:active {
   transform: scale(0.92);
   box-shadow: 0 2px 12px rgba(238, 90, 111, 0.3);
 }
@@ -348,40 +310,6 @@ onUnmounted(() => {
 .processing-indicator {
   font-size: 11px;
   opacity: 0.8;
-}
-
-/* 波纹动画 */
-.ripple-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-.ripple {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 107, 107, 0.4);
-  transform: translate(-50%, -50%);
-  animation: ripple 1.5s ease-out infinite;
-}
-
-@keyframes ripple {
-  0% {
-    width: 130px;
-    height: 130px;
-    opacity: 0.6;
-  }
-  100% {
-    width: 220px;
-    height: 220px;
-    opacity: 0;
-  }
 }
 
 @media (min-width: 768px) {

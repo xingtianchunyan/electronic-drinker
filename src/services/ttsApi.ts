@@ -1,4 +1,4 @@
-// TTS 服务 - 硅基流动
+// TTS 服务 - 优先浏览器原生语音合成，硅基流动备用
 
 const TTS_BASE_URL = 'https://api.siliconflow.cn/v1/audio/speech'
 const DEFAULT_VOICE = 'fnlp/MOSS-TTSD-v0.5:anna'
@@ -6,6 +6,17 @@ const DEFAULT_VOICE = 'fnlp/MOSS-TTSD-v0.5:anna'
 let currentAudio: HTMLAudioElement | null = null
 
 export async function speak(text: string): Promise<void> {
+  // 优先使用浏览器原生语音合成
+  if (window.speechSynthesis) {
+    try {
+      await speakNative(text)
+      return
+    } catch (e) {
+      console.warn('原生语音合成失败，尝试 SiliconFlow:', e)
+    }
+  }
+
+  // 备用：SiliconFlow API
   const apiKey = import.meta.env.VITE_SILICONFLOW_API_KEY
   if (!apiKey) {
     console.warn('SILICONFLOW_API_KEY 未配置，跳过语音合成')
@@ -71,7 +82,7 @@ export function isSpeaking(): boolean {
   return currentAudio !== null && !currentAudio.paused
 }
 
-// 浏览器原生语音合成备用
+// 浏览器原生语音合成
 export function speakNative(text: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!window.speechSynthesis) {
@@ -79,7 +90,8 @@ export function speakNative(text: string): Promise<void> {
       return
     }
 
-    stopSpeaking()
+    // 取消之前的发声
+    window.speechSynthesis.cancel()
 
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'zh-CN'
@@ -87,7 +99,14 @@ export function speakNative(text: string): Promise<void> {
     utterance.pitch = 1.0
 
     utterance.onend = () => resolve()
-    utterance.onerror = () => reject(new Error('语音合成失败'))
+    utterance.onerror = (e) => {
+      // 某些浏览器会在正常结束时触发 error，忽略已结束的情况
+      if (e.error === 'canceled' || e.error === 'interrupted') {
+        resolve()
+      } else {
+        reject(new Error('语音合成失败'))
+      }
+    }
 
     window.speechSynthesis.speak(utterance)
   })

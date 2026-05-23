@@ -16,7 +16,7 @@ export const DaoAPI = {
   },
 
   getUserDetail: async (token: string): Promise<UserDetailResponse> => {
-    const response = await daoClient.post('/user/login-user-detail', null, {
+    const response = await daoClient.post('/user/login-user-detail', {}, {
       headers: {
         'Authorization': token
       }
@@ -26,7 +26,7 @@ export const DaoAPI = {
 
   rewardScore: async (token: string, score: number = 2): Promise<ScoreRewardResponse> => {
     const response = await daoClient.post('/score/reward', {
-      toUserDid: 'did:plc:cqwrsuxq4sb4uxcqgnnhcf4x',
+      toUserDid: 'did:plc:oqjsga3dtg3epvqfapzk5aam',
       extendInfo: '电子酒友-饮酒消费',
       score
     }, {

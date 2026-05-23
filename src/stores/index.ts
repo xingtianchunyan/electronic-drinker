@@ -87,6 +87,26 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function restoreLoginState() {
+    const storedToken = sessionStorage.getItem('dao_token')
+    if (!storedToken) return
+
+    token.value = storedToken
+    try {
+      const detail = await import('@/services/daoApi').then(m => m.DaoAPI.getUserDetail(storedToken))
+      if (detail.success && detail.data) {
+        userInfo.value = detail.data
+      } else {
+        throw new Error('恢复登录失败')
+      }
+    } catch (e) {
+      console.error('恢复登录状态失败:', e)
+      token.value = ''
+      userInfo.value = null
+      sessionStorage.removeItem('dao_token')
+    }
+  }
+
   return {
     token,
     userInfo,
@@ -107,6 +127,7 @@ export const useAppStore = defineStore('app', () => {
     recordDrink,
     getRecentDrinkCount,
     deductRice,
-    initFromStorage
+    initFromStorage,
+    restoreLoginState
   }
 })

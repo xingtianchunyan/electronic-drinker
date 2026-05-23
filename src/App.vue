@@ -4,16 +4,16 @@
     <SceneLayer />
 
     <!-- 角色层 -->
-    <AgentLayer />
+    <AgentLayer v-if="store.isLoggedIn" />
 
     <!-- 气泡层 -->
-    <BubbleLayer />
+    <BubbleLayer v-if="store.isLoggedIn" />
 
     <!-- UI控制层 -->
     <UILayer />
 
     <!-- 麦克风按钮 -->
-    <MicButton />
+    <MicButton v-if="store.isLoggedIn" />
 
     <!-- 登录弹窗 -->
     <LoginModal />
@@ -32,8 +32,8 @@ import LoginModal from '@/components/LoginModal.vue'
 
 const store = useAppStore()
 
-onMounted(() => {
-  store.initFromStorage()
+onMounted(async () => {
+  await store.restoreLoginState()
   // 如果有token，尝试恢复登录状态
   if (store.token) {
     store.background = '1'

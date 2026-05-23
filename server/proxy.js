@@ -1,5 +1,4 @@
 import express from 'express';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -15,71 +14,84 @@ const FIXED_CAPTCHA = 'eyJjZXJ0aWZ5SWQiOiJGUkd3M1RGZjJoIiwic2NlbmVJZCI6IjE0bnpja
 
 app.use(express.json());
 
-app.use('/api/dao', (req, res, next) => {
+app.use('/api/dao', async (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
-  next();
-});
 
-app.use('/api/dao', createProxyMiddleware({
-  target: 'https://xjdao.net/api/v1',
-  changeOrigin: true,
-  pathRewrite: { '^/api/dao': '' },
-  secure: true,
-  onProxyReq: (proxyReq, req, res) => {
-    proxyReq.setHeader('Origin', 'https://xjdao.net');
-    proxyReq.setHeader('Referer', 'https://xjdao.net/');
-    proxyReq.setHeader('Cookie', `_c_WBKFRo=${FIXED_COOKIE}`);
-    proxyReq.setHeader('User-Agent', FIXED_UA);
-    proxyReq.setHeader('Accept', 'application/json, text/plain, */*');
-    proxyReq.setHeader('Accept-Language', 'en');
-    proxyReq.setHeader('Cache-Control', 'no-cache');
-    proxyReq.setHeader('Pragma', 'no-cache');
-    proxyReq.setHeader('Priority', 'u=1, i');
-    proxyReq.setHeader('Sec-Ch-Ua', '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"');
-    proxyReq.setHeader('Sec-Ch-Ua-Mobile', '?0');
-    proxyReq.setHeader('Sec-Ch-Ua-Platform', '"Windows"');
-    proxyReq.setHeader('Sec-Fetch-Dest', 'empty');
-    proxyReq.setHeader('Sec-Fetch-Mode', 'cors');
-    proxyReq.setHeader('Sec-Fetch-Site', 'same-origin');
+  const targetUrl = 'https://xjdao.net/api/v1' + req.url;
 
-    if (req.headers.authorization) {
-      proxyReq.setHeader('Authorization', req.headers.authorization);
+  const headers: Record<string, string> = {
+    'Origin': 'https://xjdao.net',
+    'Referer': 'https://xjdao.net/',
+    'Cookie': `_c_WBKFRo=${FIXED_COOKIE}`,
+    'User-Agent': FIXED_UA,
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Priority': 'u=1, i',
+    'Sec-Ch-Ua': '"Chromium";v="148", "Microsoft Edge";v="148", "Not/A)Brand";v="99"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-origin',
+    'Content-Type': 'application/json',
+  };
+
+  if (req.headers.authorization) {
+    headers['Authorization'] = req.headers.authorization as string;
+  }
+
+  let body = req.body;
+
+  if (req.url === '/user/login' && body) {
+    body = {
+      ...body,
+      loginType: 1,
+      phoneRegion: '86',
+      sceneId: '14nzch7b',
+      captchaVerifyParam: FIXED_CAPTCHA
+    };
+  }
+
+  if (req.url === '/user/login-user-detail' && body?.domainName) {
+    headers['Referer'] = `https://xjdao.net/profile/${body.domainName}`;
+  }
+
+  if (req.url === '/score/reward' && body?.fromDomainName) {
+    headers['Referer'] = `https://xjdao.net/profile/${body.fromDomainName}/post/3mjhgg4ht7c27`;
+  }
+
+  try {
+    const fetchBody = body ? JSON.stringify(body) : undefined;
+    if (fetchBody) {
+      headers['Content-Length'] = String(Buffer.byteLength(fetchBody));
     }
 
-    if (req.url === '/user/login' && req.body) {
-      const body = {
-        ...req.body,
-        loginType: 1,
-        phoneRegion: '86',
-        sceneId: '14nzch7b',
-        captchaVerifyParam: FIXED_CAPTCHA
-      };
-      const bodyString = JSON.stringify(body);
-      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyString));
-      proxyReq.write(bodyString);
-    }
+    const response = await fetch(targetUrl, {
+      method: req.method,
+      headers,
+      body: fetchBody,
+    });
 
-    if (req.url === '/user/login-user-detail' && req.body?.domainName) {
-      proxyReq.setHeader('Referer', `https://xjdao.net/profile/${req.body.domainName}`);
-    }
+    res.status(response.status);
+    response.headers.forEach((value, key) => {
+      res.header(key, value);
+    });
 
-    if (req.url === '/score/reward' && req.body?.fromDomainName) {
-      proxyReq.setHeader('Referer', `https://xjdao.net/profile/${req.body.fromDomainName}/post/3mjhgg4ht7c27`);
-    }
-  },
-  onProxyRes: (proxyRes, req, res) => {
-    console.log(`[PROXY] ${req.method} ${req.url} -> ${proxyRes.statusCode}`);
-  },
-  onError: (err, req, res) => {
+    const responseBody = await response.text();
+    console.log(`[PROXY] ${req.method} ${req.url} -> ${response.status}`);
+    res.send(responseBody);
+  } catch (err: any) {
     console.error('[PROXY ERROR]', err.message);
     res.status(500).json({ error: 'Proxy failed', message: err.message });
   }
-}));
+});
 
 app.use(express.static(path.join(__dirname, '../dist')));
 

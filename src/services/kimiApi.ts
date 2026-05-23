@@ -1,7 +1,9 @@
 import type { ChatMessage, FunctionTool } from '@/types'
 
 const KIMI_BASE_URL = 'https://api.moonshot.cn/v1'
-const MODEL = 'kimi-k2'
+const SILICONFLOW_BASE_URL = 'https://api.siliconflow.cn/v1'
+const KIMI_MODEL = 'kimi-k2'
+const SF_MODEL = 'Pro/deepseek-ai/DeepSeek-V3'
 
 const SYSTEM_PROMPT = `你是一位热情的虚拟酒友，名叫「小酒」。你身处一家温馨的卡通酒馆，陪伴用户喝酒聊天。
 
@@ -71,6 +73,37 @@ const functionTools: FunctionTool[] = [
 
 let conversationHistory: ChatMessage[] = []
 
+function getProviderConfig() {
+  const kimiKey = import.meta.env.VITE_KIMI_API_KEY
+  const sfKey = import.meta.env.VITE_SILICONFLOW_API_KEY
+
+  // 默认优先使用 SiliconFlow
+  if (sfKey) {
+    return {
+      baseUrl: SILICONFLOW_BASE_URL,
+      apiKey: sfKey,
+      model: SF_MODEL,
+      name: 'siliconflow'
+    }
+  }
+
+  if (kimiKey) {
+    return {
+      baseUrl: KIMI_BASE_URL,
+      apiKey: kimiKey,
+      model: KIMI_MODEL,
+      name: 'kimi'
+    }
+  }
+
+  return null
+}
+
+function normalizeAssistantContent(content: string): string {
+  // 只信任模型的显式 function calls，不再自动追加 [DRINK]
+  return content.trim()
+}
+
 export function resetConversation() {
   conversationHistory = []
 }
@@ -83,103 +116,41 @@ export function addMessage(role: 'user' | 'assistant', content: string) {
   }
 }
 
-export async function chatWithKimi(userInput: string, recentDrinkCount: number): Promise<string> {
-  const apiKey = import.meta.env.VITE_KIMI_API_KEY
-  if (!apiKey) {
-    throw new Error('KIMI_API_KEY 未配置')
-  }
-
-  // 构建消息
-  const messages: ChatMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT + `\n\n当前用户5分钟内已饮酒 ${recentDrinkCount} 次。` },
-    ...conversationHistory,
-    { role: 'user', content: userInput }
-  ]
-
-  try {
-    const response = await fetch(`${KIMI_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages,
-        temperature: 0.8,
-        max_tokens: 1024,
-        tools: functionTools
-      })
-    })
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Kimi API 错误: ${response.status} ${error}`)
-    }
-
-    const data = await response.json()
-    const choice = data.choices?.[0]
-
-    if (!choice) {
-      throw new Error('Kimi API 返回数据异常')
-    }
-
-    // 处理 function call
-    if (choice.message?.tool_calls) {
-      const toolCall = choice.message.tool_calls[0]
-      const functionName = toolCall.function?.name
-      const functionArgs = JSON.parse(toolCall.function?.arguments || '{}')
-
-      // 返回带有标记的文本，前端解析处理
-      return `[FUNC:${functionName}]${JSON.stringify(functionArgs)}`
-    }
-
-    const content = choice.message?.content || ''
-    return content
-  } catch (error) {
-    console.error('Kimi API 调用失败:', error)
-    throw error
-  }
-}
-
-// 流式版本
-export async function chatWithKimiStream(
-  userInput: string,
-  recentDrinkCount: number,
-  onChunk: (chunk: string) => void
+async function doChat(
+  provider: { baseUrl: string; apiKey: string; model: string; name: string },
+  messages: ChatMessage[],
+  stream: boolean,
+  onChunk?: (chunk: string) => void
 ): Promise<string> {
-  const apiKey = import.meta.env.VITE_KIMI_API_KEY
-  if (!apiKey) {
-    throw new Error('KIMI_API_KEY 未配置')
+  const body: Record<string, any> = {
+    model: provider.model,
+    messages,
+    temperature: 0.8,
+    max_tokens: 1024,
   }
 
-  const messages: ChatMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT + `\n\n当前用户5分钟内已饮酒 ${recentDrinkCount} 次。` },
-    ...conversationHistory,
-    { role: 'user', content: userInput }
-  ]
+  if (provider.name === 'kimi') {
+    body.tools = functionTools
+  }
+  if (stream) {
+    body.stream = true
+  }
 
-  try {
-    const response = await fetch(`${KIMI_BASE_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages,
-        temperature: 0.8,
-        max_tokens: 1024,
-        stream: true,
-        tools: functionTools
-      })
-    })
+  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${provider.apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  })
 
-    if (!response.ok) {
-      throw new Error(`Kimi API 错误: ${response.status}`)
-    }
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '')
+    throw new Error(`${provider.name} API 错误: ${response.status} ${errorText}`)
+  }
 
+  if (stream && onChunk) {
     const reader = response.body?.getReader()
     if (!reader) {
       throw new Error('无法读取响应流')
@@ -214,8 +185,99 @@ export async function chatWithKimiStream(
     }
 
     return fullContent
-  } catch (error) {
-    console.error('Kimi 流式 API 调用失败:', error)
+  }
+
+  const data = await response.json()
+  const choice = data.choices?.[0]
+
+  if (!choice) {
+    throw new Error(`${provider.name} API 返回数据异常`)
+  }
+
+  // 处理 function call
+  if (choice.message?.tool_calls) {
+    const toolCall = choice.message.tool_calls[0]
+    const functionName = toolCall.function?.name
+    const functionArgs = JSON.parse(toolCall.function?.arguments || '{}')
+    return `[FUNC:${functionName}]${JSON.stringify(functionArgs)}`
+  }
+
+  return choice.message?.content || ''
+}
+
+export async function chatWithKimi(userInput: string, recentDrinkCount: number): Promise<string> {
+  const provider = getProviderConfig()
+  if (!provider) {
+    throw new Error('KIMI_API_KEY 或 VITE_SILICONFLOW_API_KEY 未配置')
+  }
+
+  const messages: ChatMessage[] = [
+    { role: 'system', content: SYSTEM_PROMPT + `\n\n当前用户5分钟内已饮酒 ${recentDrinkCount} 次。` },
+    ...conversationHistory,
+    { role: 'user', content: userInput }
+  ]
+
+  try {
+    const content = await doChat(provider, messages, false)
+    return normalizeAssistantContent(content)
+  } catch (error: any) {
+    // 如果是 Kimi 401，自动切换到 SiliconFlow 重试
+    if (provider.name === 'kimi' && error.message?.includes('401')) {
+      const sfKey = import.meta.env.VITE_SILICONFLOW_API_KEY
+      if (sfKey) {
+        console.warn('Kimi 返回 401，自动切换到 SiliconFlow')
+        const sfProvider = {
+          baseUrl: SILICONFLOW_BASE_URL,
+          apiKey: sfKey,
+          model: SF_MODEL,
+          name: 'siliconflow'
+        }
+        const content = await doChat(sfProvider, messages, false)
+        return normalizeAssistantContent(content)
+      }
+    }
+    console.error('对话 API 调用失败:', error)
+    throw error
+  }
+}
+
+// 流式版本
+export async function chatWithKimiStream(
+  userInput: string,
+  recentDrinkCount: number,
+  onChunk: (chunk: string) => void
+): Promise<string> {
+  const provider = getProviderConfig()
+  if (!provider) {
+    throw new Error('KIMI_API_KEY 或 VITE_SILICONFLOW_API_KEY 未配置')
+  }
+
+  const messages: ChatMessage[] = [
+    { role: 'system', content: SYSTEM_PROMPT + `\n\n当前用户5分钟内已饮酒 ${recentDrinkCount} 次。` },
+    ...conversationHistory,
+    { role: 'user', content: userInput }
+  ]
+
+  try {
+    const content = await doChat(provider, messages, true, onChunk)
+    return normalizeAssistantContent(content)
+  } catch (error: any) {
+    // 如果是 Kimi 401，自动切换到 SiliconFlow 重试
+    if (provider.name === 'kimi' && error.message?.includes('401')) {
+      const sfKey = import.meta.env.VITE_SILICONFLOW_API_KEY
+      if (sfKey) {
+        console.warn('Kimi 返回 401，自动切换到 SiliconFlow')
+        const sfProvider = {
+          baseUrl: SILICONFLOW_BASE_URL,
+          apiKey: sfKey,
+          model: SF_MODEL,
+          name: 'siliconflow'
+        }
+        const content = await doChat(sfProvider, messages, true, onChunk)
+        return normalizeAssistantContent(content)
+      }
+    }
+    console.error('流式对话 API 调用失败:', error)
     throw error
   }
 }
