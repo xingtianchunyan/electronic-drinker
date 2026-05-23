@@ -30,11 +30,17 @@ export function getWineById(id: string): Wine | undefined {
   return db.wines.find(w => w.id === id)
 }
 
-export function generateWineIntro(wine: Wine): string {
+export function generateWineIntro(wine: Wine): string[] {
   const facts = wine.fun_facts
   const randomFact = facts[Math.floor(Math.random() * facts.length)]
 
-  return `来，这杯${wine.name}，干了！\n\n这款酒产自${wine.origin}，酒精度约${wine.alcohol_content}。\n\n${wine.history}\n\n酿造工艺：${wine.brewing_process}\n\n口感：${wine.tasting_notes}\n\n文化故事：${wine.culture}\n\n对了，${randomFact}\n\n慢慢品，这2稻米花得值！`
+  return [
+    `好嘞！这杯${wine.name}给你满上～`,
+    `它产自${wine.origin}，酒精度约${wine.alcohol_content}。${wine.tasting_notes.substring(0, 80)}...`,
+    `酿造工艺：${wine.brewing_process.substring(0, 80)}...`,
+    `${wine.culture.substring(0, 60)}...对了，${randomFact}`,
+    `慢慢品，这2稻米花得值！还要再来一杯不？`
+  ]
 }
 
 export function getDrinkingTip(): string {

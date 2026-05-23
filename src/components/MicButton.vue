@@ -195,12 +195,15 @@ async function handleDrinkRequest(userText?: string, wineId?: string, wineContex
         wine = getRandomWine()
       }
 
-      const intro = generateWineIntro(wine)
+      const segments = generateWineIntro(wine)
 
       store.agentState = 'speaking'
-      store.addBubble(intro, 'agent')
-      addMessage('assistant', intro)
-      await speak(intro)
+      for (const segment of segments) {
+        store.addBubble(segment, 'agent')
+        addMessage('assistant', segment)
+        await speak(segment)
+        await delay(1500)
+      }
     } else {
       const msg = '扣费失败了，可能是网络问题，稍后再试吧。'
       store.addBubble(msg, 'agent')
