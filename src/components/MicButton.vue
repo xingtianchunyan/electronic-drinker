@@ -61,14 +61,14 @@ async function triggerVoice() {
   processing.value = true
 
   try {
-    // 等待 2 秒，让 Win+H 面板弹出后再开始说话
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    await triggerVoiceBridge()
-
-    // 桥接成功后切换到文字输入模式
+    // 先切换到文字输入模式
     showTextInput.value = true
     await new Promise(resolve => setTimeout(resolve, 100))
     textInputRef.value?.focus()
+
+    // 等待 2 秒，让 Win+H 面板弹出后再开始说话
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    await triggerVoiceBridge()
   } catch (e: any) {
     alert('语音桥接失败: ' + e.message)
   } finally {
