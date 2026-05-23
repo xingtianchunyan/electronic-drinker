@@ -199,6 +199,16 @@ async function handleDrinkRequest(userText?: string, wineId?: string, wineContex
       if (!wine && wineId) {
         wine = getWineById(wineId)
       }
+      // wineId 传了但知识库中没有 → 用户要的酒不了解
+      if (wineId && !wine) {
+        const msg = '哎呀，这个酒我暂时还不了解呢，酒窖里没这款。换个我知道的？'
+        store.addBubble(msg, 'agent')
+        addMessage('assistant', msg)
+        await speak(msg)
+        processing.value = false
+        store.agentState = 'idle'
+        return
+      }
       if (!wine && userText) {
         wine = findWineByName(userText)
       }
