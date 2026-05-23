@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
 
   const body = await readBody(req);
 
-  // 从 req.url 提取路径，例如 /api/dao/user/login -> user/login
+  // 从 req.url 提取路径
   const m = req.url.match(/^\/api\/dao\/(.+)/);
   const path = m ? m[1].split('?')[0] : '';
   const targetUrl = 'https://xjdao.net/api/v1/' + path;
