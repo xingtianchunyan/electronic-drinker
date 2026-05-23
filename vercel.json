@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/dao/(.*)",
-      "destination": "/api/dao/[...path].js"
+      "destination": "/api/proxy.js"
     },
     {
       "source": "/(.*)",

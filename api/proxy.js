@@ -21,29 +21,14 @@ module.exports = async (req, res) => {
 
   const body = await readBody(req);
 
-  // 尝试多种方式获取路径
-  let pathSegments = req.query.path || [];
-  let pathSource = 'query';
-
-  // 备选：从 req.url 提取
-  if (!pathSegments.length && req.url) {
-    const urlMatch = req.url.match(/\/api\/dao\/(.+)/);
-    if (urlMatch) {
-      pathSegments = urlMatch[1].split('/');
-      pathSource = 'url';
-    }
-  }
-
-  const path = Array.isArray(pathSegments) ? pathSegments.join('/') : pathSegments;
+  // 直接从 req.url 提取路径（不依赖 req.query.path）
+  const urlMatch = req.url.match(/^\/api\/dao\/([^?]+)/);
+  const path = urlMatch ? urlMatch[1] : '';
   const targetUrl = `https://xjdao.net/api/v1/${path}`;
 
-  // 调试日志
   console.log('[DAO PROXY]', {
     method: req.method,
     url: req.url,
-    query: req.query,
-    pathSource,
-    pathSegments,
     path,
     targetUrl,
     bodyKeys: body ? Object.keys(body) : null
@@ -99,7 +84,7 @@ module.exports = async (req, res) => {
   forwardHeaders.Referer = finalReferer;
 
   const bodyString = finalBody !== null && finalBody !== undefined
-    ? (typeof finalBody === 'string' ? finalBody : JSON.stringify(finalBody))
+    ? JSON.stringify(finalBody)
     : undefined;
 
   try {
