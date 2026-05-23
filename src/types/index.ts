@@ -81,7 +81,6 @@ export interface BubbleMessage {
   text: string;
   sender: 'user' | 'agent';
   timestamp: number;
-  duration?: number;
 }
 
 export interface FunctionTool {

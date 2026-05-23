@@ -43,18 +43,8 @@ export const useAppStore = defineStore('app', () => {
       text,
       sender,
       timestamp: Date.now(),
-      duration: sender === 'agent' ? 10000 : 8000
     }
     bubbles.value.push(bubble)
-    // 限制气泡数量
-    if (bubbles.value.length > 5) {
-      bubbles.value.shift()
-    }
-    // 自动移除
-    setTimeout(() => {
-      const idx = bubbles.value.findIndex(b => b.id === bubble.id)
-      if (idx !== -1) bubbles.value.splice(idx, 1)
-    }, bubble.duration)
   }
 
   function clearBubbles() {
