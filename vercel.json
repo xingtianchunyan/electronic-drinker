@@ -4,8 +4,7 @@
   "outputDirectory": "dist",
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/dao/[...path].js"
+      "handle": "filesystem"
     },
     {
       "src": "/assets/(.*)",
