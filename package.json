@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:frontend": "vite --port 3000",
+    "dev:backend": "node server/proxy.js",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
     "start": "node server/proxy.js",
