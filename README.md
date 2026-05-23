@@ -86,41 +86,73 @@ src/
 └── utils/            # 工具函数
 ```
 
-## 本地开发
+## 本地运行
 
+### 前置准备
+
+1. 拉取代码
 ```bash
+git clone https://github.com/xingtianchunyan/electronic-drinker.git
+cd electronic-drinker
 npm install
-
-# 启动前端（Vite dev server，端口 3000）
-npm run dev
-
-# 启动后端代理（端口 3001，转发 API 到乡建 DAO）
-npm run start
-
-# 启动语音桥接（Windows 语音输入，需要 Python + Flask + pyautogui）
-npm run dev:voice
 ```
 
-### 语音桥接（Windows）
+2. 创建环境变量文件
+```bash
+cp .env.example .env.local
+```
+编辑 `.env.local`，填入你的 API Key（不填则对应功能不可用）：
+```
+VITE_KIMI_API_KEY=your_kimi_key
+VITE_SILICONFLOW_API_KEY=your_siliconflow_key
+```
 
-语音桥接用于将 Windows 原生语音输入（Win+H）接入到浏览器中：
+### 方式一：开发模式（推荐）
+
+前后端分离运行，热更新，适合开发调试。需要开 **3 个终端**：
+
+| 终端 | 命令 | 作用 | 端口 |
+|------|------|------|------|
+| 1 | `npm run dev:backend` | 启动 API 代理服务器 | 3001 |
+| 2 | `npm run dev:frontend` | 启动 Vite 前端开发服务器 | 3000 |
+| 3 | `npm run dev:voice` | 启动 Windows 语音桥接（可选） | 8787 |
+
+然后访问 http://localhost:3000
+
+### 方式二：一键生产模式
+
+构建前端静态文件，用同一台服务器 serve 并代理 API。只需 **1 个终端**：
+
+```bash
+npm run serve
+```
+
+等价于：
+```bash
+npm run build   # 构建到 dist/
+npm start       # 启动 server/proxy.js
+```
+
+然后访问 http://localhost:3000
+
+### 方式三：Docker
+
+```bash
+docker-compose up --build
+```
+
+然后访问 http://localhost:3000
+
+### Windows 语音桥接（可选）
+
+如需使用 Win+H 语音输入：
 
 ```bash
 pip install flask pyautogui
 python voice-bridge.py
 ```
 
-确保浏览器可以通过 `http://127.0.0.1:8787/voice` 访问到桥接服务。
-
-### Docker 部署
-
-```bash
-# 构建
-docker build -t electronic-drinker .
-
-# 运行
-docker run -p 3000:3000 electronic-drinker
-```
+点击麦克风按钮时会自动调用 Windows 语音输入面板。
 
 ## License
 
