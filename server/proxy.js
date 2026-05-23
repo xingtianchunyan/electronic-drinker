@@ -24,7 +24,7 @@ app.use('/api/dao', async (req, res) => {
 
   const targetUrl = 'https://xjdao.net/api/v1' + req.url;
 
-  const headers: Record<string, string> = {
+  const headers = {
     'Origin': 'https://xjdao.net',
     'Referer': 'https://xjdao.net/',
     'Cookie': `_c_WBKFRo=${FIXED_COOKIE}`,
@@ -44,7 +44,7 @@ app.use('/api/dao', async (req, res) => {
   };
 
   if (req.headers.authorization) {
-    headers['Authorization'] = req.headers.authorization as string;
+    headers['Authorization'] = String(req.headers.authorization);
   }
 
   let body = req.body;
@@ -87,7 +87,7 @@ app.use('/api/dao', async (req, res) => {
     const responseBody = await response.text();
     console.log(`[PROXY] ${req.method} ${req.url} -> ${response.status}`);
     res.send(responseBody);
-  } catch (err: any) {
+  } catch (err) {
     console.error('[PROXY ERROR]', err.message);
     res.status(500).json({ error: 'Proxy failed', message: err.message });
   }
