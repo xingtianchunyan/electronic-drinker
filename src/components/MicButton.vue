@@ -88,6 +88,12 @@ async function handleUserInput(text: string) {
     // 检查是否是饮酒触发词
     const isDrinkRequest = isDrinkIntent(text)
 
+    // 如果是饮酒请求，先匹配酒款
+    let wineContext: Wine | undefined
+    if (isDrinkRequest) {
+      wineContext = findWineByName(text)
+    }
+
     // 检查高频饮酒
     const recentDrinkCount = store.getRecentDrinkCount()
     if (isDrinkRequest && recentDrinkCount >= 3) {
@@ -98,8 +104,8 @@ async function handleUserInput(text: string) {
       return
     }
 
-    // 调用 Kimi
-    const response = await chatWithKimi(text, recentDrinkCount)
+    // 调用 Kimi，传入酒款上下文
+    const response = await chatWithKimi(text, recentDrinkCount, wineContext)
     let finalResponse = response
 
     // 处理 function call

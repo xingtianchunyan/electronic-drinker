@@ -1,4 +1,4 @@
-import type { ChatMessage, FunctionTool } from '@/types'
+import type { ChatMessage, FunctionTool, Wine } from '@/types'
 import { wineDatabase } from '@/utils/wineHelper'
 
 const KIMI_BASE_URL = 'https://api.moonshot.cn/v1'
@@ -224,14 +224,19 @@ async function doChat(
   return choice.message?.content || ''
 }
 
-export async function chatWithKimi(userInput: string, recentDrinkCount: number): Promise<string> {
+export async function chatWithKimi(userInput: string, recentDrinkCount: number, wineContext?: Wine): Promise<string> {
   const provider = getProviderConfig()
   if (!provider) {
     throw new Error('KIMI_API_KEY 或 VITE_SILICONFLOW_API_KEY 未配置')
   }
 
+  let systemContent = SYSTEM_PROMPT + `\n\n当前用户5分钟内已饮酒 ${recentDrinkCount} 次。`
+  if (wineContext) {
+    systemContent += `\n\n【当前点单酒款：${wineContext.name}】\n产地：${wineContext.origin}\n酒精度：${wineContext.alcohol_content}\n历史：${wineContext.history}\n工艺：${wineContext.brewing_process}\n口感：${wineContext.tasting_notes}\n文化：${wineContext.culture}\n趣闻：${wineContext.fun_facts.join('；')}`
+  }
+
   const messages: ChatMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT + `\n\n当前用户5分钟内已饮酒 ${recentDrinkCount} 次。` },
+    { role: 'system', content: systemContent },
     ...conversationHistory,
     { role: 'user', content: userInput }
   ]
@@ -264,15 +269,21 @@ export async function chatWithKimi(userInput: string, recentDrinkCount: number):
 export async function chatWithKimiStream(
   userInput: string,
   recentDrinkCount: number,
-  onChunk: (chunk: string) => void
+  onChunk: (chunk: string) => void,
+  wineContext?: Wine
 ): Promise<string> {
   const provider = getProviderConfig()
   if (!provider) {
     throw new Error('KIMI_API_KEY 或 VITE_SILICONFLOW_API_KEY 未配置')
   }
 
+  let systemContent = SYSTEM_PROMPT + `\n\n当前用户5分钟内已饮酒 ${recentDrinkCount} 次。`
+  if (wineContext) {
+    systemContent += `\n\n【当前点单酒款：${wineContext.name}】\n产地：${wineContext.origin}\n酒精度：${wineContext.alcohol_content}\n历史：${wineContext.history}\n工艺：${wineContext.brewing_process}\n口感：${wineContext.tasting_notes}\n文化：${wineContext.culture}\n趣闻：${wineContext.fun_facts.join('；')}`
+  }
+
   const messages: ChatMessage[] = [
-    { role: 'system', content: SYSTEM_PROMPT + `\n\n当前用户5分钟内已饮酒 ${recentDrinkCount} 次。` },
+    { role: 'system', content: systemContent },
     ...conversationHistory,
     { role: 'user', content: userInput }
   ]
