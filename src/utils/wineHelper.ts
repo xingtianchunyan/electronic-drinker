@@ -18,6 +18,14 @@ export function searchWine(query: string): Wine[] {
   )
 }
 
+export function findWineByName(name: string): Wine | undefined {
+  const q = name.toLowerCase().trim()
+  return db.wines.find(wine =>
+    wine.name.toLowerCase().includes(q) ||
+    q.includes(wine.name.toLowerCase())
+  )
+}
+
 export function getWineById(id: string): Wine | undefined {
   return db.wines.find(w => w.id === id)
 }

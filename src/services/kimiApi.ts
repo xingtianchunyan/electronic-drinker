@@ -1,42 +1,45 @@
 import type { ChatMessage, FunctionTool } from '@/types'
+import { wineDatabase } from '@/utils/wineHelper'
 
 const KIMI_BASE_URL = 'https://api.moonshot.cn/v1'
 const SILICONFLOW_BASE_URL = 'https://api.siliconflow.cn/v1'
 const KIMI_MODEL = 'kimi-k2'
 const SF_MODEL = 'Pro/deepseek-ai/DeepSeek-V3'
 
+// 动态构建酒款名称→ID 映射表
+const WINE_NAME_MAP = wineDatabase.wines.map(w => `- ${w.name}（ID: ${w.id}）`).join('\n')
+
 const SYSTEM_PROMPT = `你是一位热情的虚拟酒友，名叫「小酒」。你身处一家温馨的卡通酒馆，陪伴用户喝酒聊天。
 
 你的性格特点：
 1. 热情开朗，会主动劝酒但也关心用户健康，适时提醒"适量饮酒"
 2. 精通中外酒文化、酒历史、酿造工艺，能生动介绍各种酒款
-3. 当用户说"干杯"、"喝一个"、"陪我喝一杯"时，你必须：
-   - 先热情回应，提醒适量饮酒
-   - 表示要调用 drink_wine 函数（消耗2稻米）
-   - 从知识库中介绍当前喝的酒款
-4. 情绪价值优先，善于倾听和安慰，用户倾诉时多共情少评判
-5. 回复要口语化、有感染力，像真正的朋友一样说话
-6. 每次回复控制在 150 字以内，适合语音播报
+3. 当用户明确要喝某款特定酒（如"来一杯大海黄酒"）时，你必须调用 drink_wine 函数，并传入该酒款的正确 wine_id
+4. 当用户只说"干杯"、"喝一个"等笼统饮酒意愿时，调用 drink_wine 函数，wine_id 可留空（随机选择）
+5. 情绪价值优先，善于倾听和安慰，用户倾诉时多共情少评判
+6. 回复要口语化、有感染力，像真正的朋友一样说话
+7. 每次回复控制在 150 字以内，适合语音播报
 
-当前你掌握以下酒款知识：白酒（茅台、五粮液、汾酒、泸州老窖、剑南春、西凤酒、董酒、水井坊）、黄酒（女儿红、客家娘酒、即墨老酒、龙岩沉缸酒）、葡萄酒（拉菲、罗曼尼康帝、酩悦香槟、阿斯蒂莫斯卡托）、啤酒（青岛、鹅岛IPA）、威士忌（麦卡伦18年、響和风醇韵）。
+当前酒窖库存如下：
+${WINE_NAME_MAP}
 
-饮酒触发词：干杯、喝一个、走一个、陪我喝一杯、再来一杯、干一个、整一杯。当用户明确表达饮酒意愿时，在回复末尾标注 [DRINK]。`
+饮酒触发词：干杯、喝一个、走一个、陪我喝一杯、再来一杯、干一个、整一杯、喝一杯。当用户明确表达饮酒意愿时，调用 drink_wine 函数。`
 
 const functionTools: FunctionTool[] = [
   {
     type: 'function',
     function: {
       name: 'drink_wine',
-      description: '当用户明确要求喝酒、干杯、喝一个时调用。消耗2稻米，播放饮酒动画，并介绍一款随机酒款。',
+      description: '当用户明确要求喝酒、干杯、喝一个时调用。消耗2稻米，播放饮酒动画，并介绍一款酒款。如果用户明确指定了酒款名称（如"来一杯大海黄酒"），必须传入对应的 wine_id；如果用户未指定，可留空（随机选择）。',
       parameters: {
         type: 'object',
         properties: {
           wine_id: {
             type: 'string',
-            description: '从知识库随机选择的酒款ID'
+            description: '酒款ID。当用户指定了具体酒款时传入对应ID，未指定时留空（随机选择）。'
           }
         },
-        required: ['wine_id']
+        required: []
       }
     }
   },

@@ -41,7 +41,8 @@ import { speak } from '@/services/ttsApi'
 import { DaoAPI } from '@/services/daoApi'
 import { triggerVoiceBridge } from '@/services/voiceBridge'
 import { isDrinkIntent } from '@/utils/drinkIntent'
-import { getRandomWine, generateWineIntro } from '@/utils/wineHelper'
+import { getRandomWine, getWineById, findWineByName, generateWineIntro } from '@/utils/wineHelper'
+import type { Wine } from '@/types'
 
 const store = useAppStore()
 const showTextInput = ref(false)
@@ -102,7 +103,9 @@ async function handleUserInput(text: string) {
 
     // 处理 function call
     if (response.startsWith('[FUNC:drink_wine]')) {
-      await handleDrinkRequest()
+      const jsonStr = response.replace('[FUNC:drink_wine]', '')
+      const args = JSON.parse(jsonStr || '{}')
+      await handleDrinkRequest(text, args.wine_id)
       return
     }
 
@@ -110,7 +113,7 @@ async function handleUserInput(text: string) {
     let finalResponse = response
     if (finalResponse.includes('[DRINK]')) {
       finalResponse = finalResponse.replace('[DRINK]', '').trim()
-      await handleDrinkRequest()
+      await handleDrinkRequest(text)
       return
     }
 
@@ -132,7 +135,7 @@ async function handleUserInput(text: string) {
   }
 }
 
-async function handleDrinkRequest() {
+async function handleDrinkRequest(userText?: string, wineId?: string) {
   // 检查登录状态
   if (!store.isLoggedIn) {
     const msg = '先登录乡建DAO才能一起喝酒哦，点击左上角登录吧～'
@@ -166,8 +169,19 @@ async function handleDrinkRequest() {
       store.agentState = 'drinking'
       await delay(2000)
 
-      // 随机选酒
-      const wine = getRandomWine()
+      // 确定酒款
+      let wine: Wine | undefined
+      if (wineId) {
+        wine = getWineById(wineId)
+      }
+      if (!wine && userText) {
+        // 前端回退：从用户消息中匹配酒名
+        wine = findWineByName(userText)
+      }
+      if (!wine) {
+        wine = getRandomWine()
+      }
+
       const intro = generateWineIntro(wine)
 
       store.agentState = 'speaking'
