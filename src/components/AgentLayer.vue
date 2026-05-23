@@ -21,7 +21,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useAppStore } from '@/stores'
-import actorImg from '@/assets/agent/actor.png'
+import actorImg from '@/assets/agent/actor.jpeg'
 
 const store = useAppStore()
 const loaded = ref(false)
